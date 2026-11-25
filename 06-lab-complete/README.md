@@ -1,7 +1,6 @@
 # Part 6 — Final Project: Production-ready AI Agent
 
-Bạn tự xây một AI agent đủ chuẩn production từ **bản khung** trong thư mục này, kết hợp mọi thứ đã học ở Part 1–5.
-Mọi file đều đã có sẵn, phần việc của bạn nằm ở các chỗ ghi `TODO`. Bản khung chạy được nhưng **chưa đạt tiêu chí nào**.
+Agent FastAPI dùng mock LLM, xác thực bằng API key, dùng Redis cho rate limit và ngân sách, và được đóng gói bằng Docker multi-stage.
 
 Bài chỉ được tính hoàn thành khi script chấm báo **`PASS 12/12`**:
 
@@ -52,50 +51,29 @@ Script tự khởi động agent của bạn, gọi API thật, build và chạy
 
 ---
 
-## Bản khung
-
-```
-06-lab-complete/
-├── app/
-│   ├── main.py           # TODO: /health, /ready, nối auth + rate limit + cost guard vào /ask, log JSON, shutdown
-│   ├── config.py         # TODO: đọc cấu hình từ biến môi trường
-│   ├── auth.py           # TODO: verify_api_key → 401
-│   ├── rate_limiter.py   # TODO: check_rate_limit → 429 (Redis)
-│   ├── cost_guard.py     # TODO: check_budget → 402, record_cost (Redis)
-│   └── redis_client.py   # TODO: kết nối Redis + redis_healthy() cho /ready
-├── utils/mock_llm.py     # Mock LLM — có sẵn, không cần sửa
-├── Dockerfile            # TODO: viết lại thành multi-stage production
-├── docker-compose.yml    # TODO: thêm redis
-├── .dockerignore         # TODO
-├── .env.example          # TODO: liệt kê đủ biến
-├── railway.toml          # TODO (hoặc render.yaml)
-├── render.yaml           # TODO (hoặc railway.toml)
-├── requirements.txt      # Có sẵn
-├── check_production_ready.py   # Script chấm — không sửa
-└── benchmark-observability/    # Part 7 — làm sau khi xong Part 6
-```
-
-**Gợi ý thứ tự làm:** `/health` → `config.py` → log JSON → `auth.py` → `redis_client.py` + `/ready` → `rate_limiter.py` → `cost_guard.py` → graceful shutdown → `Dockerfile` + `.dockerignore` → `docker-compose.yml` → `railway.toml` / `render.yaml`. Hướng dẫn từng bước: [CODE_LAB.md — Part 6](../CODE_LAB.md#part-6-final-project-60-phút).
-
----
-
 ## Chạy local
+
+Trong thư mục này, tạo `.env` từ `.env.example` và điền `AGENT_API_KEY` bằng một giá trị ngẫu nhiên dùng riêng ở local. Mặc định ứng dụng dùng cổng 8000. Compose cấu hình URL Redis trên mạng nội bộ.
+
+```bash
+cp -n .env.example .env
+docker compose up -d --build --wait
+
+curl http://localhost:8000/health
+curl http://localhost:8000/ready
+curl -X POST http://localhost:8000/ask \
+     -H "X-API-Key: $AGENT_API_KEY" -H "Content-Type: application/json" \
+     -d '{"question": "What is deployment?"}'
+```
+
+Đặt `AGENT_API_KEY` trong biến môi trường shell dùng để gọi curl bằng cùng giá trị đã điền vào `.env`. Nếu dùng Redis ngoài Compose, cấu hình `REDIS_URL` trong `.env` và chạy:
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env
-
-# Chạy nhanh không cần Docker (cần Redis riêng nếu muốn test rate limit thật)
-AGENT_API_KEY=dev-key uvicorn app.main:app --reload
-
-# Chạy cả agent + redis
-docker compose up --build
-
-curl http://localhost:8000/health
-curl -X POST http://localhost:8000/ask \
-     -H "X-API-Key: dev-key" -H "Content-Type: application/json" \
-     -d '{"question": "What is deployment?"}'
+uvicorn app.main:app --env-file .env
 ```
+
+`DAILY_BUDGET_USD` tính theo ngày UTC. Rate limit cố định theo mỗi API key trong cửa sổ trượt 60 giây. Khi mất Redis, `/health` vẫn trả 200 và `/ready` trả 503.
 
 ---
 
