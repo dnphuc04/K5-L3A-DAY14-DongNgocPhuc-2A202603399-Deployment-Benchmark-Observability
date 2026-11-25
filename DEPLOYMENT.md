@@ -28,21 +28,24 @@ curl -sS -o /dev/null -w '%{http_code}\n' -X POST "$BASE/ask" \
   -d '{"question":"Hello"}'                                      # 200
 ```
 
-Kết quả kiểm tra trực tiếp qua HTTPS:
+Kết quả kiểm tra trực tiếp qua HTTPS lúc 17:39:21 ngày 25/11/2026 (GMT+7).
 
 ```text
 https://agent-production-4e6fa674.up.railway.app
 
 GET /health -> HTTP 200
 {"status":"ok","environment":"production"}
+
 GET /ready -> HTTP 200
 {"ready":true}
+
 POST /ask (no API key) -> HTTP 401
 {"detail":"Missing or invalid API key"}
+
 POST /ask (API key redacted) -> HTTP 200
 {"question":"Hello","answer":"Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé."}
 ```
 
 - [Dashboard Railway](screenshots/dashboard.png) cho thấy cả agent và Redis Online.
 - [Bản deploy đang chạy](screenshots/running.png) hiển thị ACTIVE và Deployment successful trên Railway.
-- [Kết quả kiểm tra HTTP](screenshots/test.png) chụp trang tổng hợp từ bốn request HTTPS thực tế. Trang chỉ hiển thị trạng thái và response body, đã ẩn API key.
+- [Kết quả kiểm tra HTTP](screenshots/test.png) là ảnh chụp trang kiểm tra trong trình duyệt sau khi trang kích hoạt bốn request HTTPS tới Railway. Trang hiển thị mã HTTP và response body của cùng lượt chạy.
